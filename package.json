@@ -5,14 +5,12 @@
   "type": "module",
   "scripts": {
     "postinstall": "npx prisma generate --schema=prisma/schema.prisma || true",
-    "build:client": "cd client && npm install && npm run build",
-    "build:server": "cd server && npm install && npm run build",
-    "build": "cd client && npm install && npm run build && cd ../server && npm install && npm run build",
+    "build:client": "cd client && npm install --include=dev && npm run build",
+    "build:server": "cd server && npm install --include=dev && npm run build",
+    "build": "cd client && npm install --include=dev && npm run build && cd ../server && npm install --include=dev && npm run build",
     "start": "node server/dist/index.js",
     "dev:server": "cd server && npm run dev",
     "dev:client": "cd client && npm run dev",
-    "prisma:generate": "npx prisma generate --schema=prisma/schema.prisma",
-    "prisma:migrate": "npx prisma migrate deploy --schema=prisma/schema.prisma",
     "test": "cd server && npm test"
   }
 }
