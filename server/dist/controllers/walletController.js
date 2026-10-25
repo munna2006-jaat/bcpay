@@ -33,6 +33,7 @@ export class WalletController {
     static async getDepositChannels(req, res) {
         try {
             const state = dbStore.getState();
+            const activeQrs = (state.paymentQrs || []).filter(q => q.isActive);
             res.json({
                 rates: {
                     inrToMcoin: state.settings['INR_TO_MCOIN_RATE'] || '1.0',
@@ -42,6 +43,7 @@ export class WalletController {
                     upiId: state.settings['ADMIN_UPI_ID'] || 'paytm.earnloop@okaxis',
                     name: state.settings['ADMIN_UPI_NAME'] || 'EarnLoop Technologies',
                 },
+                activeQrs,
                 usdt: {
                     trc20Address: state.settings['ADMIN_USDT_TRC20'] || 'TQn9Y2khEsLJW1ChVWFMSMeSTow5KaxUSDT',
                     networks: ['TRC20 (Tron)', 'ERC20 (Ethereum)', 'BEP20 (BNB Smart Chain)'],

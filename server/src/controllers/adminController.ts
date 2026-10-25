@@ -348,3 +348,75 @@ export class AdminController {
     }
   }
 }
+
+// QR Management Extension for AdminController
+export class AdminQrController {
+  public static async getQrs(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const state = dbStore.getState();
+      res.json({ qrs: state.paymentQrs || [] });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Failed to fetch QRs' });
+    }
+  }
+
+  public static async uploadQr(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { name, upiId, receiverName, qrImageUrl, isActive } = req.body;
+      if (!name || !upiId || !qrImageUrl) {
+        res.status(400).json({ error: 'QR Name, UPI ID, and QR Image are required.' });
+        return;
+      }
+
+      const state = dbStore.getState();
+      if (!state.paymentQrs) state.paymentQrs = [];
+
+      const newQr = {
+        id: uuidv4(),
+        name: name.trim(),
+        upiId: upiId.trim(),
+        receiverName: receiverName ? receiverName.trim() : 'EarnLoop',
+        qrImageUrl: qrImageUrl.trim(),
+        isActive: isActive !== false,
+        createdAt: new Date().toISOString()
+      };
+
+      state.paymentQrs.unshift(newQr);
+      dbStore.save();
+
+      res.status(201).json({ message: 'QR Code uploaded successfully', qr: newQr });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Failed to upload QR' });
+    }
+  }
+
+  public static async toggleQr(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { qrId } = req.body;
+      const state = dbStore.getState();
+      const qr = state.paymentQrs.find(q => q.id === qrId);
+      if (!qr) {
+        res.status(404).json({ error: 'QR not found' });
+        return;
+      }
+
+      qr.isActive = !qr.isActive;
+      dbStore.save();
+      res.json({ message: `QR ${qr.isActive ? 'activated' : 'deactivated'} successfully`, qr });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Failed to update QR' });
+    }
+  }
+
+  public static async deleteQr(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const state = dbStore.getState();
+      state.paymentQrs = state.paymentQrs.filter(q => q.id !== id);
+      dbStore.save();
+      res.json({ message: 'QR Code deleted successfully' });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Failed to delete QR' });
+    }
+  }
+}

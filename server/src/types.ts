@@ -133,3 +133,13 @@ export interface IAdminAuditLog {
   ipAddress?: string;
   createdAt: string;
 }
+
+export interface IPaymentQr {
+  id: string;
+  name: string;
+  upiId: string;
+  receiverName: string;
+  qrImageUrl: string;
+  isActive: boolean;
+  createdAt: string;
+}

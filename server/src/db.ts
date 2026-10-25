@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { IUser, IProfile, IWallet, ILedgerTransaction, IOrder, ITask, ITaskSubmission, IAppSetting, IAdminAuditLog } from './types.js';
+import { IUser, IProfile, IWallet, ILedgerTransaction, IOrder, ITask, ITaskSubmission, IAdminAuditLog, IPaymentQr } from './types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +16,7 @@ export interface DatabaseState {
   orders: IOrder[];
   tasks: ITask[];
   taskSubmissions: ITaskSubmission[];
+  paymentQrs: IPaymentQr[];
   settings: Record<string, string>;
   auditLogs: IAdminAuditLog[];
   otps: { id: string; phone: string; code: string; purpose: string; expiresAt: string; verified: boolean; attempts: number }[];
@@ -69,6 +70,26 @@ const defaultState: DatabaseState = {
     }
   ],
   taskSubmissions: [],
+  paymentQrs: [
+    {
+      id: 'qr-1',
+      name: 'Primary Official Paytm UPI QR',
+      upiId: 'paytm.earnloop@okaxis',
+      receiverName: 'EarnLoop Technologies',
+      qrImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=paytm.earnloop@okaxis%26pn=EarnLoop%26cu=INR',
+      isActive: true,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'qr-2',
+      name: 'PhonePe & GPay Instant QR',
+      upiId: 'earnloop.fast@ibl',
+      receiverName: 'EarnLoop VIP Payments',
+      qrImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=earnloop.fast@ibl%26pn=EarnLoop%26cu=INR',
+      isActive: true,
+      createdAt: new Date().toISOString()
+    }
+  ],
   settings: {
     INR_TO_MCOIN_RATE: '1.0',
     USDT_TO_MCOIN_RATE: '110.5',
@@ -101,7 +122,11 @@ class MemoryStore {
       }
       if (fs.existsSync(STORE_FILE)) {
         const raw = fs.readFileSync(STORE_FILE, 'utf-8');
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        if (!parsed.paymentQrs) {
+          parsed.paymentQrs = defaultState.paymentQrs;
+        }
+        return parsed;
       }
     } catch (err) {
       console.warn('Could not read existing store.json, using defaults:', err);

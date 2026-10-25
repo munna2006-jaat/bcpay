@@ -4,7 +4,7 @@ import { WalletController } from '../controllers/walletController.js';
 import { OrderController } from '../controllers/orderController.js';
 import { TaskController } from '../controllers/taskController.js';
 import { TeamController } from '../controllers/teamController.js';
-import { AdminController } from '../controllers/adminController.js';
+import { AdminController, AdminQrController } from '../controllers/adminController.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
@@ -49,5 +49,11 @@ router.post('/admin/tasks/review', requireAdmin, AdminController.reviewTaskSubmi
 router.get('/admin/settings', requireAdmin, AdminController.getSettings);
 router.put('/admin/settings', requireAdmin, AdminController.updateSettings);
 router.get('/admin/audit-logs', requireAdmin, AdminController.getAuditLogs);
+
+// 7. Admin QR Code Manager
+router.get('/admin/qrs', requireAdmin, AdminQrController.getQrs);
+router.post('/admin/qrs', requireAdmin, AdminQrController.uploadQr);
+router.post('/admin/qrs/toggle', requireAdmin, AdminQrController.toggleQr);
+router.delete('/admin/qrs/:id', requireAdmin, AdminQrController.deleteQr);
 
 export default router;

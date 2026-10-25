@@ -79,6 +79,15 @@
             <span id="pendingBadge" class="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black">0</span>
           </button>
 
+          <!-- NEW: MULTIPLE UPI QR CODES TAB -->
+          <button onclick="switchTab('qrs')" id="nav-qrs" class="nav-btn w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition text-slate-400 hover:text-white hover:bg-slate-800">
+            <div class="flex items-center gap-2.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+              <span>UPI QR Manager</span>
+            </div>
+            <span id="qrBadge" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black">0</span>
+          </button>
+
           <button onclick="switchTab('users')" id="nav-users" class="nav-btn w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl transition text-slate-400 hover:text-white hover:bg-slate-800">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
             <span>Users & Balances</span>
@@ -184,6 +193,78 @@
           </div>
         </section>
 
+        <!-- TAB: MULTIPLE UPI QR CODES -->
+        <section id="tab-qrs" class="tab-pane hidden space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Multiple UPI QR Code Manager</h2>
+              <p class="text-xs text-slate-500">Upload multiple payment QR codes. Users can view and scan all active QRs on the deposit screen.</p>
+            </div>
+            <button onclick="document.getElementById('uploadQrCard').scrollIntoView({ behavior: 'smooth' })" class="px-4 py-2 bg-[#0088FF] text-white rounded-xl text-xs font-bold shadow-sm hover:bg-[#0077E6] transition">
+              + Upload New QR
+            </button>
+          </div>
+
+          <!-- Upload Form Card -->
+          <div id="uploadQrCard" class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+            <h3 class="text-sm font-black text-slate-900">Upload New Payment QR Code</h3>
+            
+            <form id="qrUploadForm" onsubmit="handleQrUpload(event)" class="space-y-4 text-xs font-semibold">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="space-y-1">
+                  <label class="text-slate-700">QR Name / Bank Label</label>
+                  <input type="text" id="qr_name" placeholder="e.g. Paytm VIP Merchant QR" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium" required />
+                </div>
+
+                <div class="space-y-1">
+                  <label class="text-slate-700">UPI ID (VPA)</label>
+                  <input type="text" id="qr_upiId" placeholder="e.g. merchant@paytm" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono" required />
+                </div>
+
+                <div class="space-y-1">
+                  <label class="text-slate-700">Receiver Name</label>
+                  <input type="text" id="qr_receiver" placeholder="e.g. EarnLoop Corp" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium" required />
+                </div>
+              </div>
+
+              <!-- File Input & Image Preview -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center pt-1">
+                <div class="space-y-1">
+                  <label class="text-slate-700">Select QR Code Image (File)</label>
+                  <input type="file" id="qr_file" accept="image/*" onchange="previewQrFile(event)" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#0088FF] file:text-white hover:file:bg-[#0077E6]" />
+                  <span class="text-[10px] text-slate-400 block">Or paste image URL below if already hosted online</span>
+                  <input type="text" id="qr_url" placeholder="Optional: https://..." class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono mt-1" />
+                </div>
+
+                <div class="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                  <div class="w-20 h-20 bg-white rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                    <img id="qr_preview" src="" alt="QR Preview" class="hidden w-full h-full object-contain" />
+                    <span id="qr_preview_placeholder" class="text-[10px] text-slate-400 text-center px-1">No Image Selected</span>
+                  </div>
+                  <div>
+                    <span class="text-xs font-bold text-slate-800 block">Live QR Preview</span>
+                    <span class="text-[11px] text-slate-400 block">Image will be rendered directly on customer app.</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pt-2">
+                <button type="submit" id="btnUploadQr" class="py-3 px-6 bg-[#0088FF] hover:bg-[#0077E6] text-white font-bold rounded-xl text-xs shadow-md shadow-blue-500/20 active:scale-98 transition">
+                  Upload & Activate QR Code
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- List of Existing QRs -->
+          <div class="space-y-3">
+            <h3 class="text-sm font-bold text-slate-900">Configured Payment QR Codes</h3>
+            <div id="qrsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </section>
+
         <!-- TAB 2: USERS -->
         <section id="tab-users" class="tab-pane hidden space-y-4">
           <div class="flex items-center justify-between">
@@ -261,7 +342,7 @@
                 </div>
 
                 <div class="space-y-1">
-                  <label class="text-slate-700">Official Deposit UPI ID</label>
+                  <label class="text-slate-700">Official Default UPI ID</label>
                   <input type="text" id="set_UPI_ID" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm" required>
                 </div>
 
@@ -379,10 +460,10 @@
 
   <!-- SCRIPT LOGIC -->
   <script>
-    let globalData = { orders: [], users: [], tasks: [], settings: {}, logs: [] };
+    let globalData = { orders: [], users: [], tasks: [], qrs: [], settings: {}, logs: [] };
     let currentAdminPin = localStorage.getItem('earnloop_admin_pin') || '';
+    let uploadedQrBase64 = '';
 
-    // Check if previously logged in
     window.addEventListener('DOMContentLoaded', () => {
       if (currentAdminPin) {
         verifyPinAndLoad(currentAdminPin);
@@ -436,11 +517,12 @@
 
     async function refreshDashboard() {
       try {
-        const [statsRes, ordersRes, usersRes, tasksRes, settingsRes, logsRes] = await Promise.all([
+        const [statsRes, ordersRes, usersRes, tasksRes, qrsRes, settingsRes, logsRes] = await Promise.all([
           adminFetch('/api/admin/stats'),
           adminFetch('/api/admin/orders'),
           adminFetch('/api/admin/users'),
           adminFetch('/api/admin/tasks/submissions'),
+          adminFetch('/api/admin/qrs'),
           adminFetch('/api/admin/settings'),
           adminFetch('/api/admin/audit-logs'),
         ]);
@@ -449,11 +531,11 @@
           orders: ordersRes.orders || [],
           users: usersRes.users || [],
           tasks: tasksRes.submissions || [],
+          qrs: qrsRes.qrs || [],
           settings: settingsRes.settings || {},
           logs: logsRes.logs || []
         };
 
-        // Update metrics
         const s = statsRes.metrics;
         document.getElementById('metricUsers').innerText = s.totalUsers;
         document.getElementById('metricPending').innerText = s.pendingOrders;
@@ -462,8 +544,10 @@
 
         document.getElementById('pendingBadge').innerText = s.pendingOrders;
         document.getElementById('taskBadge').innerText = s.pendingTasks;
+        document.getElementById('qrBadge').innerText = globalData.qrs.length;
 
         renderOrders('ALL');
+        renderQrs();
         renderUsers();
         renderTasks();
         populateSettings();
@@ -490,6 +574,7 @@
 
       const titles = {
         orders: 'Order Verification & Ledger Approval',
+        qrs: 'Multiple UPI QR Code Manager',
         users: 'User Accounts & Wallet Balances',
         tasks: 'Task & Mission Submissions',
         settings: 'System & Payment Gateway Configuration',
@@ -498,6 +583,117 @@
       document.getElementById('pageTitle').innerText = titles[tabName] || 'EarnLoop Admin';
     }
 
+    /* ================= QR CODE MANAGEMENT ================= */
+    function previewQrFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        uploadedQrBase64 = e.target.result;
+        const img = document.getElementById('qr_preview');
+        img.src = uploadedQrBase64;
+        img.classList.remove('hidden');
+        document.getElementById('qr_preview_placeholder').classList.add('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function handleQrUpload(e) {
+      e.preventDefault();
+      const name = document.getElementById('qr_name').value.trim();
+      const upiId = document.getElementById('qr_upiId').value.trim();
+      const receiverName = document.getElementById('qr_receiver').value.trim();
+      const urlInput = document.getElementById('qr_url').value.trim();
+
+      const finalImgUrl = uploadedQrBase64 || urlInput;
+      if (!finalImgUrl) {
+        alert('Please choose a QR image file or enter an image URL.');
+        return;
+      }
+
+      try {
+        await adminFetch('/api/admin/qrs', {
+          method: 'POST',
+          body: JSON.stringify({
+            name,
+            upiId,
+            receiverName,
+            qrImageUrl: finalImgUrl,
+            isActive: true
+          })
+        });
+        alert('UPI QR Code uploaded and activated successfully!');
+        document.getElementById('qrUploadForm').reset();
+        document.getElementById('qr_preview').classList.add('hidden');
+        document.getElementById('qr_preview_placeholder').classList.remove('hidden');
+        uploadedQrBase64 = '';
+        await refreshDashboard();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function renderQrs() {
+      const grid = document.getElementById('qrsGrid');
+      if (!globalData.qrs.length) {
+        grid.innerHTML = `<div class="col-span-full py-8 text-center text-slate-400 text-xs">No QR codes uploaded yet. Upload one above!</div>`;
+        return;
+      }
+
+      grid.innerHTML = globalData.qrs.map(qr => `
+        <div class="bg-white rounded-2xl border ${qr.isActive ? 'border-emerald-200 shadow-sm' : 'border-slate-200 opacity-60'} p-4 flex flex-col justify-between space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-900 text-xs truncate mr-2">${qr.name}</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-black ${qr.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}">
+              ${qr.isActive ? 'ACTIVE' : 'INACTIVE'}
+            </span>
+          </div>
+
+          <div class="w-full h-44 bg-slate-50 rounded-xl p-2 border border-slate-100 flex items-center justify-center overflow-hidden">
+            <img src="${qr.qrImageUrl}" alt="${qr.name}" class="w-full h-full object-contain" />
+          </div>
+
+          <div class="space-y-1 text-xs">
+            <div class="text-slate-500 text-[11px]">UPI: <strong class="text-slate-900 font-mono">${qr.upiId}</strong></div>
+            <div class="text-slate-500 text-[11px]">Name: <strong class="text-slate-800">${qr.receiverName}</strong></div>
+          </div>
+
+          <div class="flex gap-2 pt-1 border-t border-slate-100">
+            <button onclick="toggleQrStatus('${qr.id}')" class="flex-1 py-1.5 rounded-lg font-bold text-[11px] ${qr.isActive ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'} transition">
+              ${qr.isActive ? 'Deactivate' : 'Activate'}
+            </button>
+            <button onclick="deleteQr('${qr.id}')" class="px-2.5 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg font-bold text-[11px] transition">
+              Delete
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function toggleQrStatus(qrId) {
+      try {
+        await adminFetch('/api/admin/qrs/toggle', {
+          method: 'POST',
+          body: JSON.stringify({ qrId })
+        });
+        await refreshDashboard();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteQr(qrId) {
+      if (!confirm('Are you sure you want to delete this QR code?')) return;
+      try {
+        await adminFetch(`/api/admin/qrs/${qrId}`, { method: 'DELETE' });
+        await refreshDashboard();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    /* ================= ORDERS ================= */
     function renderOrders(filter = 'ALL') {
       const tbody = document.getElementById('ordersTableBody');
       const filtered = globalData.orders.filter(o => {

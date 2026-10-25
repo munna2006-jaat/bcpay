@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Copy, Check, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Copy, Check, QrCode } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -28,13 +28,42 @@ export const InrPaymentModal: React.FC<InrPaymentModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<any>(null);
 
+  // Dynamic Multi-QR State from Admin
+  const [qrList, setQrList] = useState<any[]>([]);
+  const [selectedQrIndex, setSelectedQrIndex] = useState(0);
+
+  useEffect(() => {
+    if (isOpen) {
+      api.getDepositChannels().then((res) => {
+        if (res.activeQrs && res.activeQrs.length > 0) {
+          setQrList(res.activeQrs);
+        } else {
+          // Default fallback
+          setQrList([
+            {
+              id: 'default',
+              name: 'Official UPI QR',
+              upiId: res.upi?.upiId || 'paytm.earnloop@okaxis',
+              receiverName: res.upi?.name || 'EarnLoop Technologies',
+              qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=${res.upi?.upiId || 'paytm.earnloop@okaxis'}%26pn=EarnLoop%26cu=INR`,
+            },
+          ]);
+        }
+      }).catch(console.error);
+    }
+  }, [isOpen]);
+
   if (!isOpen || !packageData) return null;
 
-  const upiId = 'paytm.earnloop@okaxis';
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=${upiId}%26pn=EarnLoop%26am=${packageData.amount}%26cu=INR`;
+  const currentQr = qrList[selectedQrIndex] || {
+    name: 'Official UPI QR',
+    upiId: 'paytm.earnloop@okaxis',
+    receiverName: 'EarnLoop Technologies',
+    qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=paytm.earnloop@okaxis%26pn=EarnLoop%26cu=INR`,
+  };
 
   const handleCopyUpi = () => {
-    navigator.clipboard.writeText(upiId);
+    navigator.clipboard.writeText(currentQr.upiId);
     setCopied(true);
     showToast('UPI ID copied to clipboard!', 'success');
     setTimeout(() => setCopied(false), 2000);
@@ -51,7 +80,7 @@ export const InrPaymentModal: React.FC<InrPaymentModalProps> = ({
         type: 'INR_BUY',
         fiatAmount: packageData.amount,
         tier: packageData.tier || 'Small',
-        network: 'UPI',
+        network: `UPI (${currentQr.name})`,
       });
       setCreatedOrder(res.order);
       showToast('Order generated! Please pay and enter UTR.', 'info');
@@ -89,7 +118,7 @@ export const InrPaymentModal: React.FC<InrPaymentModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+      <div className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-blue-50 to-white">
           <div>
@@ -122,19 +151,44 @@ export const InrPaymentModal: React.FC<InrPaymentModalProps> = ({
             </div>
           </div>
 
+          {/* Multiple QR Selector Tabs (If multiple QRs available) */}
+          {qrList.length > 1 && (
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-gray-600 block">Select Active QR Code:</span>
+              <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+                {qrList.map((qr, idx) => (
+                  <button
+                    key={qr.id}
+                    type="button"
+                    onClick={() => setSelectedQrIndex(idx)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                      selectedQrIndex === idx
+                        ? 'bg-[#0088FF] text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {qr.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* QR Code and UPI ID */}
           <div className="flex flex-col items-center justify-center p-3 bg-gray-50 rounded-xl border border-gray-200">
-            <div className="w-40 h-40 bg-white p-2 rounded-xl shadow-sm border border-gray-200 mb-2">
-              <img src={qrUrl} alt="UPI QR Code" className="w-full h-full object-contain" />
+            <span className="text-xs font-bold text-gray-800 mb-1">{currentQr.name}</span>
+            <div className="w-44 h-44 bg-white p-2 rounded-xl shadow-sm border border-gray-200 mb-2 overflow-hidden flex items-center justify-center">
+              <img src={currentQr.qrImageUrl} alt="UPI QR Code" className="w-full h-full object-contain" />
             </div>
-            <span className="text-xs text-gray-500 mb-2">Scan with GPay, PhonePe, Paytm, or BHIM</span>
+            <span className="text-xs text-gray-500 mb-2">Scan with GPay, PhonePe, Paytm, BHIM</span>
 
             <div className="w-full flex items-center justify-between p-2.5 bg-white rounded-lg border border-gray-200">
               <div className="truncate mr-2">
-                <span className="text-[10px] text-gray-400 block uppercase font-bold">UPI ID</span>
-                <span className="font-mono text-xs font-semibold text-gray-800">{upiId}</span>
+                <span className="text-[10px] text-gray-400 block uppercase font-bold">{currentQr.receiverName || 'UPI ID'}</span>
+                <span className="font-mono text-xs font-bold text-gray-900">{currentQr.upiId}</span>
               </div>
               <button
+                type="button"
                 onClick={handleCopyUpi}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#0088FF] text-white text-xs font-medium active:scale-95 transition"
               >
@@ -147,7 +201,7 @@ export const InrPaymentModal: React.FC<InrPaymentModalProps> = ({
           {/* Step Instructions */}
           <div className="text-xs text-gray-600 space-y-1.5 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
             <p className="font-semibold text-blue-900">How to complete payment:</p>
-            <p>1. Pay ₹{Number(packageData.amount).toLocaleString('en-IN')} using any UPI app.</p>
+            <p>1. Pay ₹{Number(packageData.amount).toLocaleString('en-IN')} using the QR code above or UPI ID.</p>
             <p>2. Copy the 12-digit <strong>UTR Number / Ref ID</strong> from the transaction receipt.</p>
             <p>3. Paste below and click <strong>Submit Verification</strong>.</p>
           </div>
