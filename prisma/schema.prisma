@@ -1,0 +1,314 @@
+// Prisma schema for EarnLoop-style Rewards Web Application
+// Database: PostgreSQL on Render (or local PostgreSQL / compatible)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BLOCKED
+}
+
+enum OtpPurpose {
+  REGISTRATION
+  LOGIN
+  PASSWORD_RESET
+  WITHDRAWAL_CONFIRMATION
+}
+
+enum OrderType {
+  INR_BUY
+  USDT_BUY
+  SELL_WITHDRAWAL
+}
+
+enum OrderStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum TaskStatus {
+  DRAFT
+  AVAILABLE
+  PAUSED
+  EXPIRED
+}
+
+enum SubmissionStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum LedgerTransactionType {
+  DEPOSIT_CREDIT
+  WITHDRAWAL_DEBIT
+  TASK_REWARD
+  REFERRAL_COMMISSION
+  WELCOME_BONUS
+  ADMIN_ADJUSTMENT
+  PURCHASE_DEBIT
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+// User account
+model User {
+  id              String            @id @default(uuid())
+  phone           String            @unique
+  passwordHash    String
+  role            UserRole          @default(USER)
+  status          UserStatus        @default(ACTIVE)
+  referralCode    String            @unique
+  referredById    String?
+  referrer        User?             @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals       User[]            @relation("UserReferrals")
+  
+  profile         Profile?
+  wallet          Wallet?
+  sessions        Session[]
+  orders          Order[]
+  taskSubmissions TaskSubmission[]
+  notifications   Notification[]
+  supportTickets  SupportTicket[]
+  ledgerEntries   LedgerTransaction[]
+  adminAuditLogs  AdminAuditLog[]   @relation("AdminActions")
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([phone])
+  @@index([referralCode])
+  @@index([referredById])
+}
+
+// User financial profile & payout details
+model Profile {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nickname        String?
+  avatar          String?
+  upiId           String?
+  bankHolderName  String?
+  bankAccount     String?
+  bankIfsc        String?
+  usdtTrc20       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// User active session
+model Session {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token       String    @unique
+  ipAddress   String?
+  userAgent   String?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([token])
+}
+
+// OTP verification logs
+model OtpVerification {
+  id          String      @id @default(uuid())
+  phone       String
+  codeHash    String
+  purpose     OtpPurpose
+  attempts    Int         @default(0)
+  maxAttempts Int         @default(5)
+  verified    Boolean     @default(false)
+  expiresAt   DateTime
+  createdAt   DateTime    @default(now())
+
+  @@index([phone, purpose])
+}
+
+// Wallet model for balances
+model Wallet {
+  id              String              @id @default(uuid())
+  userId          String              @unique
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mcoinBalance    Decimal             @default(0.0000) @db.Decimal(20, 4)
+  lockedBalance   Decimal             @default(0.0000) @db.Decimal(20, 4)
+  totalEarned     Decimal             @default(0.0000) @db.Decimal(20, 4)
+  totalWithdrawn  Decimal             @default(0.0000) @db.Decimal(20, 4)
+  todayEarnings   Decimal             @default(0.0000) @db.Decimal(20, 4)
+  todayDate       String?             // For resetting daily stats: YYYY-MM-DD
+  version         Int                 @default(0) // Optimistic concurrency lock
+  transactions    LedgerTransaction[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+}
+
+// Strict double-entry / audit ledger
+model LedgerTransaction {
+  id              String                @id @default(uuid())
+  walletId        String
+  wallet          Wallet                @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type            LedgerTransactionType
+  amount          Decimal               @db.Decimal(20, 4)
+  balanceBefore   Decimal               @db.Decimal(20, 4)
+  balanceAfter    Decimal               @db.Decimal(20, 4)
+  referenceType   String                // "ORDER", "TASK_SUBMISSION", "REFERRAL", "MANUAL_ADJUSTMENT"
+  referenceId     String?
+  description     String
+  adminId         String?
+  createdAt       DateTime              @default(now())
+
+  @@index([userId])
+  @@index([walletId])
+  @@index([referenceType, referenceId])
+}
+
+// Orders for Buying or Selling Mcoins (INR / USDT)
+model Order {
+  id              String        @id @default(uuid())
+  orderNumber     String        @unique // e.g. ORD-20261025-XXXX
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type            OrderType
+  tier            String?       // "Small", "Middle", "Large"
+  fiatAmount      Decimal       @db.Decimal(20, 4) // ₹ INR or $ USDT
+  currency        String        // "INR" or "USDT"
+  rateApplied     Decimal       @db.Decimal(20, 4) // e.g. 1.0 or 110.5
+  rewardMcoin     Decimal       @default(0.0000) @db.Decimal(20, 4) // e.g. 25.23
+  totalMcoin      Decimal       @db.Decimal(20, 4) // e.g. 666.23
+  network         String?       // "TRC20", "ERC20", "BEP20", "UPI"
+  depositAddress  String?       // Admin UPI ID or USDT wallet address
+  utrNumber       String?       // User input Transaction Reference / UTR / TXID
+  proofImage      String?       // Receipt upload url/base64
+  status          OrderStatus   @default(PENDING)
+  adminNote       String?
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([orderNumber])
+  @@index([status])
+}
+
+// Tasks & earning opportunities
+model Task {
+  id              String            @id @default(uuid())
+  title           String
+  category        String            // "Social", "App", "Survey", "Special"
+  rewardMcoin     Decimal           @db.Decimal(20, 4)
+  icon            String?
+  instructions    String
+  requirements    String
+  link            String?
+  maxSubmissions  Int               @default(1000)
+  status          TaskStatus        @default(AVAILABLE)
+  submissions     TaskSubmission[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+// Task submissions by users
+model TaskSubmission {
+  id              String            @id @default(uuid())
+  taskId          String
+  task            Task              @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  proofText       String?
+  proofImage      String?
+  status          SubmissionStatus  @default(SUBMITTED)
+  rewardCredited  Decimal           @default(0.0000) @db.Decimal(20, 4)
+  adminFeedback   String?
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([taskId, userId]) // Duplicate submission prevention per task
+  @@index([userId])
+  @@index([status])
+}
+
+// Notification system
+model Notification {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  message     String
+  type        String    @default("INFO") // "INFO", "SUCCESS", "REWARD", "SECURITY"
+  isRead      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+// Support Tickets
+model SupportTicket {
+  id          String              @id @default(uuid())
+  userId      String
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject     String
+  message     String
+  status      SupportTicketStatus @default(OPEN)
+  adminReply  String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+// Admin Audit Log
+model AdminAuditLog {
+  id          String    @id @default(uuid())
+  adminId     String
+  admin       User      @relation("AdminActions", fields: [adminId], references: [id], onDelete: Cascade)
+  action      String    // "APPROVE_ORDER", "REJECT_ORDER", "ADJUST_BALANCE", "UPDATE_SETTINGS"
+  targetType  String
+  targetId    String?
+  details     String?   // JSON string of changes
+  ipAddress   String?
+  createdAt   DateTime  @default(now())
+
+  @@index([adminId])
+  @@index([action])
+}
+
+// Dynamic Application Settings (Configurable via Admin)
+model AppSetting {
+  id          String    @id @default(uuid())
+  key         String    @unique
+  value       String
+  description String?
+  updatedAt   DateTime  @updatedAt
+}

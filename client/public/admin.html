@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EarnLoop Master Admin Control Center</title>
+  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', -apple-system, sans-serif; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-[#F4F6FB] text-slate-800 min-h-screen">
+
+  <!-- ================= AUTHENTICATION OVERLAY ================= -->
+  <div id="authOverlay" class="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl border border-slate-100 text-center space-y-5 animate-fade-in">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#0088FF] to-[#0055CC] text-white mx-auto flex items-center justify-center shadow-lg shadow-blue-500/30">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+      </div>
+      <div>
+        <h2 class="text-2xl font-black text-slate-900 tracking-tight">EarnLoop Control Center</h2>
+        <p class="text-xs text-slate-500 mt-1">Protected Administrator Command Portal</p>
+      </div>
+
+      <form id="pinForm" onsubmit="handlePinSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 text-left mb-1.5">Master Admin PIN</label>
+          <input 
+            type="password" 
+            id="pinInput" 
+            placeholder="Enter Admin PIN" 
+            required 
+            class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-center text-lg tracking-widest font-mono font-bold focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0088FF]"
+          />
+        </div>
+        <p class="text-[11px] text-slate-400">Default PIN: <code class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-mono font-bold">EarnLoop@Admin#2026</code></p>
+        <button 
+          type="submit" 
+          id="unlockBtn"
+          class="w-full py-3.5 bg-[#0088FF] hover:bg-[#0077E6] text-white font-bold rounded-2xl text-sm shadow-lg shadow-blue-500/25 active:scale-98 transition duration-200"
+        >
+          Unlock Control Center
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= MASTER DASHBOARD ================= -->
+  <div id="dashboardApp" class="hidden min-h-screen flex flex-col lg:flex-row">
+    
+    <!-- Sidebar -->
+    <aside class="w-full lg:w-64 bg-slate-900 text-slate-300 flex flex-col justify-between shrink-0">
+      <div>
+        <!-- Brand Header -->
+        <div class="px-6 py-5 border-b border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center bg-white/10 p-1">
+              <img src="/logo.svg" alt="EarnLoop" class="w-full h-full object-contain" />
+            </div>
+            <div>
+              <span class="font-black text-white text-base tracking-tight block">EarnLoop</span>
+              <span class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Admin Portal</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Navigation Links -->
+        <nav class="p-4 space-y-1.5 text-xs font-bold">
+          <button onclick="switchTab('orders')" id="nav-orders" class="nav-btn w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition text-white bg-[#0088FF]">
+            <div class="flex items-center gap-2.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+              <span>Order Verification</span>
+            </div>
+            <span id="pendingBadge" class="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black">0</span>
+          </button>
+
+          <button onclick="switchTab('users')" id="nav-users" class="nav-btn w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl transition text-slate-400 hover:text-white hover:bg-slate-800">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+            <span>Users & Balances</span>
+          </button>
+
+          <button onclick="switchTab('tasks')" id="nav-tasks" class="nav-btn w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition text-slate-400 hover:text-white hover:bg-slate-800">
+            <div class="flex items-center gap-2.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+              <span>Tasks & Rewards</span>
+            </div>
+            <span id="taskBadge" class="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black">0</span>
+          </button>
+
+          <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl transition text-slate-400 hover:text-white hover:bg-slate-800">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            <span>Payment & App Settings</span>
+          </button>
+
+          <button onclick="switchTab('logs')" id="nav-logs" class="nav-btn w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl transition text-slate-400 hover:text-white hover:bg-slate-800">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span>Ledger & Audit Trail</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- User footer -->
+      <div class="p-4 border-t border-slate-800 flex items-center justify-between text-xs">
+        <a href="/" target="_blank" class="text-blue-400 hover:underline font-semibold flex items-center gap-1">
+          <span>Customer App</span>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+        </a>
+        <button onclick="lockAdmin()" class="text-red-400 hover:text-red-300 font-bold">Lock</button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col min-w-0">
+      
+      <!-- Top Stats Bar -->
+      <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 id="pageTitle" class="text-xl font-black text-slate-900 tracking-tight">Orders & Verification</h1>
+          <p class="text-xs text-slate-500">Live platform management with automated ledger reconciliation</p>
+        </div>
+
+        <!-- Quick Metrics Pill Strip -->
+        <div class="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
+          <div class="bg-blue-50 border border-blue-100 px-3.5 py-2 rounded-2xl shrink-0">
+            <span class="text-[10px] text-blue-600 font-bold uppercase tracking-wider block">Total Users</span>
+            <span id="metricUsers" class="text-base font-black text-blue-950">0</span>
+          </div>
+
+          <div class="bg-orange-50 border border-orange-100 px-3.5 py-2 rounded-2xl shrink-0">
+            <span class="text-[10px] text-orange-600 font-bold uppercase tracking-wider block">Pending Orders</span>
+            <span id="metricPending" class="text-base font-black text-orange-950">0</span>
+          </div>
+
+          <div class="bg-emerald-50 border border-emerald-100 px-3.5 py-2 rounded-2xl shrink-0">
+            <span class="text-[10px] text-emerald-600 font-bold uppercase tracking-wider block">Total Mcoin Issued</span>
+            <span id="metricMcoin" class="text-base font-black text-emerald-950">0</span>
+          </div>
+
+          <div class="bg-purple-50 border border-purple-100 px-3.5 py-2 rounded-2xl shrink-0">
+            <span class="text-[10px] text-purple-600 font-bold uppercase tracking-wider block">0.3% Team Paid</span>
+            <span id="metricComm" class="text-base font-black text-purple-950">0</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Page Containers -->
+      <div class="p-6 flex-1 space-y-6">
+
+        <!-- TAB 1: ORDERS -->
+        <section id="tab-orders" class="tab-pane space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-slate-900">Incoming Buy & Sell Orders</h2>
+            <div class="flex gap-2 text-xs font-semibold">
+              <button onclick="renderOrders('ALL')" class="order-filter-btn px-3 py-1.5 rounded-lg bg-slate-900 text-white">All</button>
+              <button onclick="renderOrders('UNDER_REVIEW')" class="order-filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">Pending Review</button>
+              <button onclick="renderOrders('APPROVED')" class="order-filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">Approved</button>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                    <th class="py-3.5 px-4">Order Details</th>
+                    <th class="py-3.5 px-4">User Mobile</th>
+                    <th class="py-3.5 px-4">Type & Network</th>
+                    <th class="py-3.5 px-4">Fiat / Mcoin Amount</th>
+                    <th class="py-3.5 px-4">UTR / TXID Reference</th>
+                    <th class="py-3.5 px-4">Status</th>
+                    <th class="py-3.5 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="ordersTableBody" class="divide-y divide-slate-100 font-medium">
+                  <tr><td colspan="7" class="py-8 text-center text-slate-400">Loading orders...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 2: USERS -->
+        <section id="tab-users" class="tab-pane hidden space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-slate-900">User Management & Balance Controls</h2>
+            <div class="text-xs text-slate-500">Every manual balance change creates an immutable audit trail</div>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                    <th class="py-3.5 px-4">Mobile Number</th>
+                    <th class="py-3.5 px-4">Invitation Code</th>
+                    <th class="py-3.5 px-4">Mcoin Balance</th>
+                    <th class="py-3.5 px-4">Today's Earnings</th>
+                    <th class="py-3.5 px-4">Total Invites</th>
+                    <th class="py-3.5 px-4">Status</th>
+                    <th class="py-3.5 px-4 text-right">Adjust Balance</th>
+                  </tr>
+                </thead>
+                <tbody id="usersTableBody" class="divide-y divide-slate-100 font-medium">
+                  <tr><td colspan="7" class="py-8 text-center text-slate-400">Loading users...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 3: TASKS -->
+        <section id="tab-tasks" class="tab-pane hidden space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-slate-900">User Task Submissions Review</h2>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                    <th class="py-3.5 px-4">Task Name</th>
+                    <th class="py-3.5 px-4">User Phone</th>
+                    <th class="py-3.5 px-4">Reward Amount</th>
+                    <th class="py-3.5 px-4">User Proof Submitted</th>
+                    <th class="py-3.5 px-4">Status</th>
+                    <th class="py-3.5 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="tasksTableBody" class="divide-y divide-slate-100 font-medium">
+                  <tr><td colspan="6" class="py-8 text-center text-slate-400">Loading task submissions...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 4: SETTINGS -->
+        <section id="tab-settings" class="tab-pane hidden max-w-3xl space-y-6">
+          <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+            <div class="border-b border-slate-100 pb-3">
+              <h2 class="text-base font-black text-slate-900">System & Payment Configuration</h2>
+              <p class="text-xs text-slate-500">Configure deposit channels, exchange rates, and support links displayed to all users</p>
+            </div>
+
+            <form id="settingsForm" onsubmit="handleSettingsSave(event)" class="space-y-4 text-xs font-semibold">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-1">
+                  <label class="text-slate-700">1 INR to Mcoin Ratio</label>
+                  <input type="text" id="set_INR_RATE" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm" required>
+                </div>
+
+                <div class="space-y-1">
+                  <label class="text-slate-700">1 USDT to Mcoin Ratio</label>
+                  <input type="text" id="set_USDT_RATE" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm" required>
+                </div>
+
+                <div class="space-y-1">
+                  <label class="text-slate-700">Official Deposit UPI ID</label>
+                  <input type="text" id="set_UPI_ID" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm" required>
+                </div>
+
+                <div class="space-y-1">
+                  <label class="text-slate-700">UPI Receiver Name</label>
+                  <input type="text" id="set_UPI_NAME" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm" required>
+                </div>
+
+                <div class="space-y-1 md:col-span-2">
+                  <label class="text-slate-700">USDT TRC20 Deposit Wallet Address</label>
+                  <input type="text" id="set_USDT_ADDR" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm" required>
+                </div>
+
+                <div class="space-y-1">
+                  <label class="text-slate-700">WhatsApp Support Link</label>
+                  <input type="text" id="set_WHATSAPP" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" required>
+                </div>
+
+                <div class="space-y-1">
+                  <label class="text-slate-700">Telegram Channel Link</label>
+                  <input type="text" id="set_TELEGRAM" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" required>
+                </div>
+
+                <div class="space-y-1">
+                  <label class="text-slate-700">Support Email</label>
+                  <input type="email" id="set_EMAIL" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" required>
+                </div>
+
+                <div class="space-y-1">
+                  <label class="text-slate-700">Master Admin PIN</label>
+                  <input type="text" id="set_ADMIN_PIN" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm" required>
+                </div>
+              </div>
+
+              <div class="pt-2">
+                <button type="submit" class="w-full py-3.5 bg-[#0088FF] hover:bg-[#0077E6] text-white font-bold rounded-xl text-sm shadow-md shadow-blue-500/20 active:scale-98 transition">
+                  Save All Configuration Settings
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- TAB 5: AUDIT LOGS -->
+        <section id="tab-logs" class="tab-pane hidden space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-slate-900">Immutable Audit Trail & Ledger Logs</h2>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                    <th class="py-3.5 px-4">Timestamp</th>
+                    <th class="py-3.5 px-4">Action</th>
+                    <th class="py-3.5 px-4">Target Type</th>
+                    <th class="py-3.5 px-4">Details</th>
+                  </tr>
+                </thead>
+                <tbody id="logsTableBody" class="divide-y divide-slate-100 font-mono text-[11px]">
+                  <tr><td colspan="4" class="py-8 text-center text-slate-400">Loading audit trail...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ================= BALANCE ADJUST MODAL ================= -->
+  <div id="balanceModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 text-xs font-semibold">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-sm font-bold text-slate-900">Adjust User Mcoin Balance</h3>
+        <button onclick="closeBalanceModal()" class="text-slate-400 hover:text-slate-600">✕</button>
+      </div>
+
+      <form id="balanceForm" onsubmit="submitBalanceAdjust(event)" class="space-y-3">
+        <input type="hidden" id="adj_userId" />
+        
+        <div>
+          <label class="text-slate-500 block mb-1">Target User</label>
+          <div id="adj_userPhone" class="font-bold text-slate-900 text-sm font-mono">+91 0000000000</div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <label class="flex items-center justify-center p-2.5 border rounded-xl cursor-pointer bg-blue-50 border-blue-200 text-[#0088FF] font-bold">
+            <input type="radio" name="adj_action" value="CREDIT" checked class="mr-1.5"> + Credit
+          </label>
+          <label class="flex items-center justify-center p-2.5 border rounded-xl cursor-pointer border-slate-200 text-slate-700 font-bold">
+            <input type="radio" name="adj_action" value="DEBIT" class="mr-1.5"> - Debit
+          </label>
+        </div>
+
+        <div>
+          <label class="text-slate-500 block mb-1">Mcoin Amount</label>
+          <input type="number" id="adj_amount" step="0.01" min="0.01" value="50" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm" required />
+        </div>
+
+        <div>
+          <label class="text-slate-500 block mb-1">Mandatory Audit Reason</label>
+          <input type="text" id="adj_reason" placeholder="e.g. Promotional reward or correction" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl" required />
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeBalanceModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold">Cancel</button>
+          <button type="submit" class="flex-1 py-2.5 bg-[#0088FF] hover:bg-[#0077E6] text-white rounded-xl font-bold shadow-md shadow-blue-500/20">Submit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SCRIPT LOGIC -->
+  <script>
+    let globalData = { orders: [], users: [], tasks: [], settings: {}, logs: [] };
+    let currentAdminPin = localStorage.getItem('earnloop_admin_pin') || '';
+
+    // Check if previously logged in
+    window.addEventListener('DOMContentLoaded', () => {
+      if (currentAdminPin) {
+        verifyPinAndLoad(currentAdminPin);
+      }
+    });
+
+    async function handlePinSubmit(e) {
+      e.preventDefault();
+      const pin = document.getElementById('pinInput').value.trim();
+      await verifyPinAndLoad(pin);
+    }
+
+    async function verifyPinAndLoad(pin) {
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Invalid Admin PIN');
+
+        currentAdminPin = pin;
+        localStorage.setItem('earnloop_admin_pin', pin);
+        document.getElementById('authOverlay').classList.add('hidden');
+        document.getElementById('dashboardApp').classList.remove('hidden');
+
+        await refreshDashboard();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function lockAdmin() {
+      localStorage.removeItem('earnloop_admin_pin');
+      currentAdminPin = '';
+      location.reload();
+    }
+
+    async function adminFetch(endpoint, options = {}) {
+      const headers = {
+        'Content-Type': 'application/json',
+        'x-admin-pin': currentAdminPin,
+        ...(options.headers || {})
+      };
+      const res = await fetch(endpoint, { ...options, headers });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Admin request failed');
+      return data;
+    }
+
+    async function refreshDashboard() {
+      try {
+        const [statsRes, ordersRes, usersRes, tasksRes, settingsRes, logsRes] = await Promise.all([
+          adminFetch('/api/admin/stats'),
+          adminFetch('/api/admin/orders'),
+          adminFetch('/api/admin/users'),
+          adminFetch('/api/admin/tasks/submissions'),
+          adminFetch('/api/admin/settings'),
+          adminFetch('/api/admin/audit-logs'),
+        ]);
+
+        globalData = {
+          orders: ordersRes.orders || [],
+          users: usersRes.users || [],
+          tasks: tasksRes.submissions || [],
+          settings: settingsRes.settings || {},
+          logs: logsRes.logs || []
+        };
+
+        // Update metrics
+        const s = statsRes.metrics;
+        document.getElementById('metricUsers').innerText = s.totalUsers;
+        document.getElementById('metricPending').innerText = s.pendingOrders;
+        document.getElementById('metricMcoin').innerText = Number(s.totalMcoinIssued).toFixed(0);
+        document.getElementById('metricComm').innerText = Number(s.totalCommissionPaid).toFixed(0);
+
+        document.getElementById('pendingBadge').innerText = s.pendingOrders;
+        document.getElementById('taskBadge').innerText = s.pendingTasks;
+
+        renderOrders('ALL');
+        renderUsers();
+        renderTasks();
+        populateSettings();
+        renderLogs();
+      } catch (err) {
+        console.error('Failed to refresh dashboard:', err);
+      }
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.nav-btn').forEach(el => {
+        el.classList.remove('bg-[#0088FF]', 'text-white');
+        el.classList.add('text-slate-400');
+      });
+
+      const targetPane = document.getElementById(`tab-${tabName}`);
+      const targetNav = document.getElementById(`nav-${tabName}`);
+      if (targetPane) targetPane.classList.remove('hidden');
+      if (targetNav) {
+        targetNav.classList.add('bg-[#0088FF]', 'text-white');
+        targetNav.classList.remove('text-slate-400');
+      }
+
+      const titles = {
+        orders: 'Order Verification & Ledger Approval',
+        users: 'User Accounts & Wallet Balances',
+        tasks: 'Task & Mission Submissions',
+        settings: 'System & Payment Gateway Configuration',
+        logs: 'Audit Trail & Financial Ledger Logs'
+      };
+      document.getElementById('pageTitle').innerText = titles[tabName] || 'EarnLoop Admin';
+    }
+
+    function renderOrders(filter = 'ALL') {
+      const tbody = document.getElementById('ordersTableBody');
+      const filtered = globalData.orders.filter(o => {
+        if (filter === 'ALL') return true;
+        return o.status === filter;
+      });
+
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400">No orders found in this view</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(o => `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="py-3 px-4 font-mono font-bold text-slate-900">${o.orderNumber}</td>
+          <td class="py-3 px-4 font-mono font-bold text-slate-800">+91 ${o.userPhone}</td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-0.5 rounded-md font-bold text-[10px] ${o.type.includes('BUY') ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}">${o.type} (${o.network || 'UPI'})</span>
+          </td>
+          <td class="py-3 px-4">
+            <div class="font-bold text-slate-900">${o.currency === 'INR' ? '₹' : '$'}${Number(o.fiatAmount).toLocaleString('en-IN')}</div>
+            <div class="text-[10px] text-blue-600 font-semibold">${Number(o.totalMcoin).toFixed(2)} Mcoin</div>
+          </td>
+          <td class="py-3 px-4">
+            <span class="font-mono bg-slate-100 text-slate-800 px-2 py-1 rounded text-[11px] font-bold">${o.utrNumber || 'Pending'}</span>
+          </td>
+          <td class="py-3 px-4">
+            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${
+              o.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' :
+              o.status === 'REJECTED' ? 'bg-rose-100 text-rose-800' :
+              'bg-amber-100 text-amber-800 animate-pulse'
+            }">${o.status}</span>
+          </td>
+          <td class="py-3 px-4 text-right">
+            ${o.status === 'UNDER_REVIEW' || o.status === 'PENDING' ? `
+              <div class="flex items-center justify-end gap-1.5">
+                <button onclick="reviewOrder('${o.id}', 'APPROVE')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] shadow-sm active:scale-95 transition">Approve</button>
+                <button onclick="reviewOrder('${o.id}', 'REJECT')" class="px-2.5 py-1 bg-rose-500 hover:bg-rose-600 text-white rounded-lg font-bold text-[11px] active:scale-95 transition">Reject</button>
+              </div>
+            ` : `<span class="text-slate-400 text-[11px]">Completed</span>`}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function reviewOrder(orderId, decision) {
+      if (!confirm(`Are you sure you want to ${decision} this order?`)) return;
+      try {
+        await adminFetch('/api/admin/orders/review', {
+          method: 'POST',
+          body: JSON.stringify({ orderId, decision })
+        });
+        alert(`Order successfully ${decision.toLowerCase()}ed! Balance reconciled.`);
+        await refreshDashboard();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function renderUsers() {
+      const tbody = document.getElementById('usersTableBody');
+      if (!globalData.users.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400">No users found</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = globalData.users.map(u => `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="py-3 px-4 font-mono font-bold text-slate-900">+91 ${u.phone}</td>
+          <td class="py-3 px-4 font-mono text-blue-600 font-bold">${u.referralCode}</td>
+          <td class="py-3 px-4 font-black text-slate-900">${Number(u.wallet?.mcoinBalance || 0).toFixed(2)} Mcoin</td>
+          <td class="py-3 px-4 font-semibold text-emerald-600">${Number(u.wallet?.todayEarnings || 0).toFixed(2)}</td>
+          <td class="py-3 px-4 font-bold text-purple-600">${u.inviteCount || 0}</td>
+          <td class="py-3 px-4"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">${u.status}</span></td>
+          <td class="py-3 px-4 text-right">
+            <button onclick="openBalanceModal('${u.id}', '${u.phone}')" class="px-3 py-1 bg-blue-50 text-[#0088FF] hover:bg-blue-100 font-bold rounded-lg text-[11px] transition">Adjust Balance</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function openBalanceModal(userId, phone) {
+      document.getElementById('adj_userId').value = userId;
+      document.getElementById('adj_userPhone').innerText = '+91 ' + phone;
+      document.getElementById('balanceModal').classList.remove('hidden');
+    }
+
+    function closeBalanceModal() {
+      document.getElementById('balanceModal').classList.add('hidden');
+    }
+
+    async function submitBalanceAdjust(e) {
+      e.preventDefault();
+      const userId = document.getElementById('adj_userId').value;
+      const amount = document.getElementById('adj_amount').value;
+      const reason = document.getElementById('adj_reason').value;
+      const action = document.querySelector('input[name="adj_action"]:checked').value;
+
+      try {
+        await adminFetch('/api/admin/users/adjust-balance', {
+          method: 'POST',
+          body: JSON.stringify({ userId, amount, action, reason })
+        });
+        alert(`Successfully ${action.toLowerCase()}ed ${amount} Mcoin.`);
+        closeBalanceModal();
+        await refreshDashboard();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function renderTasks() {
+      const tbody = document.getElementById('tasksTableBody');
+      if (!globalData.tasks.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400">No task submissions found</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = globalData.tasks.map(t => `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="py-3 px-4 font-bold text-slate-900">${t.taskTitle}</td>
+          <td class="py-3 px-4 font-mono font-bold">+91 ${t.userPhone}</td>
+          <td class="py-3 px-4 font-black text-orange-600">+${Number(t.rewardMcoin).toFixed(0)} Mcoin</td>
+          <td class="py-3 px-4 font-mono text-[11px] bg-slate-50 rounded">${t.proofText || 'None'}</td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
+              t.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' :
+              t.status === 'REJECTED' ? 'bg-rose-100 text-rose-800' :
+              'bg-amber-100 text-amber-800'
+            }">${t.status}</span>
+          </td>
+          <td class="py-3 px-4 text-right">
+            ${t.status === 'SUBMITTED' ? `
+              <div class="flex items-center justify-end gap-1.5">
+                <button onclick="reviewTask('${t.id}', 'APPROVE')" class="px-2.5 py-1 bg-emerald-600 text-white rounded-lg font-bold text-[11px]">Approve</button>
+                <button onclick="reviewTask('${t.id}', 'REJECT')" class="px-2.5 py-1 bg-rose-500 text-white rounded-lg font-bold text-[11px]">Reject</button>
+              </div>
+            ` : `<span class="text-slate-400">Done</span>`}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function reviewTask(submissionId, decision) {
+      try {
+        await adminFetch('/api/admin/tasks/review', {
+          method: 'POST',
+          body: JSON.stringify({ submissionId, decision })
+        });
+        alert(`Task submission ${decision.toLowerCase()}ed!`);
+        await refreshDashboard();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function populateSettings() {
+      const s = globalData.settings;
+      document.getElementById('set_INR_RATE').value = s.INR_TO_MCOIN_RATE || '1.0';
+      document.getElementById('set_USDT_RATE').value = s.USDT_TO_MCOIN_RATE || '110.5';
+      document.getElementById('set_UPI_ID').value = s.ADMIN_UPI_ID || '';
+      document.getElementById('set_UPI_NAME').value = s.ADMIN_UPI_NAME || 'EarnLoop Technologies';
+      document.getElementById('set_USDT_ADDR').value = s.ADMIN_USDT_TRC20 || '';
+      document.getElementById('set_WHATSAPP').value = s.SUPPORT_WHATSAPP || '';
+      document.getElementById('set_TELEGRAM').value = s.SUPPORT_TELEGRAM || '';
+      document.getElementById('set_EMAIL').value = s.SUPPORT_EMAIL || '';
+      document.getElementById('set_ADMIN_PIN').value = s.ADMIN_PIN || 'EarnLoop@Admin#2026';
+    }
+
+    async function handleSettingsSave(e) {
+      e.preventDefault();
+      const updated = {
+        INR_TO_MCOIN_RATE: document.getElementById('set_INR_RATE').value.trim(),
+        USDT_TO_MCOIN_RATE: document.getElementById('set_USDT_RATE').value.trim(),
+        ADMIN_UPI_ID: document.getElementById('set_UPI_ID').value.trim(),
+        ADMIN_UPI_NAME: document.getElementById('set_UPI_NAME').value.trim(),
+        ADMIN_USDT_TRC20: document.getElementById('set_USDT_ADDR').value.trim(),
+        SUPPORT_WHATSAPP: document.getElementById('set_WHATSAPP').value.trim(),
+        SUPPORT_TELEGRAM: document.getElementById('set_TELEGRAM').value.trim(),
+        SUPPORT_EMAIL: document.getElementById('set_EMAIL').value.trim(),
+        ADMIN_PIN: document.getElementById('set_ADMIN_PIN').value.trim(),
+      };
+
+      try {
+        await adminFetch('/api/admin/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ settings: updated })
+        });
+        alert('All application configuration updated successfully!');
+        currentAdminPin = updated.ADMIN_PIN;
+        localStorage.setItem('earnloop_admin_pin', currentAdminPin);
+        await refreshDashboard();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function renderLogs() {
+      const tbody = document.getElementById('logsTableBody');
+      if (!globalData.logs.length) {
+        tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-slate-400">No logs found</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = globalData.logs.map(l => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-2.5 px-4 text-slate-500">${new Date(l.createdAt).toLocaleString()}</td>
+          <td class="py-2.5 px-4 font-bold text-slate-900">${l.action}</td>
+          <td class="py-2.5 px-4 text-blue-600">${l.targetType}</td>
+          <td class="py-2.5 px-4 text-slate-700">${l.details || ''}</td>
+        </tr>
+      `).join('');
+    }
+  </script>
+</body>
+</html>
