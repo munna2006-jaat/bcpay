@@ -156,7 +156,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           </div>
 
           <div className="text-[11px] text-gray-400">
-            Default PIN: <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-gray-700">EarnLoop@Admin#2026</code>
+            
           </div>
 
           <button
